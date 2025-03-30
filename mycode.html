@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Plane Packing Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .input-section, .output-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        .output-section {
+            flex: 2;
+            min-width: 500px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .subplane-list {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .subplane-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: #f9f9f9;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        .visualization {
+            margin-top: 20px;
+        }
+        .main-plane {
+            border: 2px solid #333;
+            margin-bottom: 30px;
+            position: relative;
+            background-color: #e9e9e9;
+        }
+        .subplane {
+            position: absolute;
+            border: 1px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        .unused-space {
+            position: absolute;
+            border: 1px dashed #666;
+            background-color: rgba(200, 200, 200, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #333;
+            box-sizing: border-box;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9f7ef;
+            border-radius: 4px;
+        }
+        .remove-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .print-btn {
+            background-color: #ff9800;
+        }
+        .load-btn {
+            background-color: #9c27b0;
+        }
+        .save-btn {
+            background-color: #2196F3;
+        }
+        .clear-btn {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Plane Packing Visualizer</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Main Plane</h2>
+            <div class="form-group">
+                <label for="main-length">Length:</label>
+                <input type="number" id="main-length" min="1" value="100">
+                <select id="main-length-unit">
+                    <option value="mm">mm</option>
+                    <option value="cm" selected>cm</option>
+                    <option value="inch">inch</option>
+                    <option value="ft">ft</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="main-breadth">Breadth:</label>
+                <input type="number" id="main-breadth" min="1" value="100">
+                <select id="main-breadth-unit">
+                    <option value="mm">mm</option>
+                    <option value="cm" selected>cm</option>
+                    <option value="inch">inch</option>
+                    <option value="ft">ft</option>
+                </select>
+            </div>
+            
+            <h2>Add Sub Plane</h2>
+            <div class="form-group">
+                <label for="sub-length">Length:</label>
+                <input type="number" id="sub-length" min="1" value="10">
+                <select id="sub-length-unit">
+                    <option value="mm">mm</option>
+                    <option value="cm" selected>cm</option>
+                    <option value="inch">inch</option>
+                    <option value="ft">ft</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sub-breadth">Breadth:</label>
+                <input type="number" id="sub-breadth" min="1" value="10">
+                <select id="sub-breadth-unit">
+                    <option value="mm">mm</option>
+                    <option value="cm" selected>cm</option>
+                    <option value="inch">inch</option>
+                    <option value="ft">ft</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="allow-rotation"> Allow rotation
+                </label>
+            </div>
+            <button id="add-btn">Add Sub Plane</button>
+            
+            <div class="subplane-list">
+                <h3>Added Sub Planes</h3>
+                <div id="subplane-items"></div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="calculate-btn">Calculate Packing</button>
+                <button id="print-btn" class="print-btn">Export PDF</button>
+                <button id="save-btn" class="save-btn">Save Data</button>
+                <button id="load-btn" class="load-btn">Load Data</button>
+                <button id="clear-btn" class="clear-btn">Clear All</button>
+            </div>
+        </div>
+        
+        <div class="output-section">
+            <h2>Packing Visualization</h2>
+            <div id="visualization" class="visualization"></div>
+            <div id="stats" class="stats"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        
+        // Conversion factors to millimeters (our base unit)
+        const units = {
+            mm: 1,
+            cm: 10,
+            inch: 25.4,
+            ft: 304.8
+        };
+
+        // Store all sub-planes
+        let subPlanes = [];
+        
+        // DOM elements
+        const addBtn = document.getElementById('add-btn');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const printBtn = document.getElementById('print-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const loadBtn = document.getElementById('load-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const subplaneItems = document.getElementById('subplane-items');
+        const visualization = document.getElementById('visualization');
+        const statsDiv = document.getElementById('stats');
+        
+        // Initialize the app
+        function initApp() {
+            loadFromLocalStorage();
+            renderSubPlaneList();
+            attachEventListeners();
+        }
+        
+        // Attach event listeners
+        function attachEventListeners() {
+            addBtn.addEventListener('click', addSubPlane);
+            calculateBtn.addEventListener('click', calculatePacking);
+            printBtn.addEventListener('click', exportToPDF);
+            saveBtn.addEventListener('click', saveToLocalStorage);
+            loadBtn.addEventListener('click', loadFromLocalStorage);
+            clearBtn.addEventListener('click', clearAll);
+        }
+        
+        // Add sub-plane to the list
+        function addSubPlane() {
+            const length = parseFloat(document.getElementById('sub-length').value);
+            const breadth = parseFloat(document.getElementById('sub-breadth').value);
+            const lengthUnit = document.getElementById('sub-length-unit').value;
+            const breadthUnit = document.getElementById('sub-breadth-unit').value;
+            
+            if (isNaN(length) || isNaN(breadth) || length <= 0 || breadth <= 0) {
+                alert('Please enter valid dimensions');
+                return;
+            }
+            
+            // Convert to base units (mm)
+            const lengthMM = length * units[lengthUnit];
+            const breadthMM = breadth * units[breadthUnit];
+            
+            const subPlane = {
+                id: Date.now(),
+                length: lengthMM,
+                breadth: breadthMM,
+                displayLength: length,
+                displayBreadth: breadth,
+                displayUnit: lengthUnit // assuming same unit for both dimensions
+            };
+            
+            subPlanes.push(subPlane);
+            renderSubPlaneList();
+        }
+        
+        // Render the list of sub-planes
+        function renderSubPlaneList() {
+            subplaneItems.innerHTML = '';
+            
+            if (subPlanes.length === 0) {
+                subplaneItems.innerHTML = '<p>No sub-planes added yet</p>';
+                return;
+            }
+            
+            subPlanes.forEach((plane, index) => {
+                const item = document.createElement('div');
+                item.className = 'subplane-item';
+                item.innerHTML = `
+                    <span>${index+1}. ${plane.displayLength} × ${plane.displayBreadth} ${plane.displayUnit}</span>
+                    <button class="remove-btn" data-id="${plane.id}">Remove</button>
+                `;
+                subplaneItems.appendChild(item);
+            });
+            
+            // Add event listeners to remove buttons
+            document.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.target.getAttribute('data-id'));
+                    subPlanes = subPlanes.filter(plane => plane.id !== id);
+                    renderSubPlaneList();
+                });
+            });
+        }
+        
+        // Calculate the packing
+        function calculatePacking() {
+            if (subPlanes.length === 0) {
+                alert('Please add at least one sub-plane');
+                return;
+            }
+            
+            const mainLength = parseFloat(document.getElementById('main-length').value);
+            const mainBreadth = parseFloat(document.getElementById('main-breadth').value);
+            const mainLengthUnit = document.getElementById('main-length-unit').value;
+            const mainBreadthUnit = document.getElementById('main-breadth-unit').value;
+            const allowRotation = document.getElementById('allow-rotation').checked;
+            
+            if (isNaN(mainLength) || isNaN(mainBreadth) || mainLength <= 0 || mainBreadth <= 0) {
+                alert('Please enter valid main plane dimensions');
+                return;
+            }
+            
+            // Convert main plane to base units (mm)
+            const mainLengthMM = mainLength * units[mainLengthUnit];
+            const mainBreadthMM = mainBreadth * units[mainBreadthUnit];
+            
+            // Sort sub-planes by area (largest first) for better packing
+            const sortedSubPlanes = [...subPlanes].sort((a, b) => 
+                (b.length * b.breadth) - (a.length * a.breadth));
+            
+            // Pack the sub-planes into main planes
+            const mainPlanes = packSubPlanes(mainLengthMM, mainBreadthMM, sortedSubPlanes, allowRotation);
+            
+            // Visualize the packing
+            visualizePacking(mainPlanes, mainLengthMM, mainBreadthMM);
+            
+            // Show statistics
+            showStats(mainPlanes, mainLength, mainBreadth, mainLengthUnit);
+        }
+        
+        // Packing algorithm (First-Fit Decreasing Height with rotation)
+        function packSubPlanes(mainLength, mainBreadth, subPlanes, allowRotation) {
+            const mainPlanes = [{
+                width: mainLength,
+                height: mainBreadth,
+                usedRectangles: [],
+                remainingSpaces: [{x: 0, y: 0, width: mainLength, height: mainBreadth}],
+                unusedSpaces: []
+            }];
+            
+            for (const subPlane of subPlanes) {
+                let placed = false;
+                
+                // Try to place in existing main planes
+                for (const mainPlane of mainPlanes) {
+                    // Try all remaining spaces in this main plane
+                    for (let i = 0; i < mainPlane.remainingSpaces.length; i++) {
+                        const space = mainPlane.remainingSpaces[i];
+                        
+                        // Try original orientation
+                        if (subPlane.length <= space.width && subPlane.breadth <= space.height) {
+                            placeRectangle(mainPlane, space, i, subPlane.length, subPlane.breadth, subPlane);
+                            placed = true;
+                            break;
+                        }
+                        
+                        // Try rotated orientation if allowed
+                        if (allowRotation && subPlane.breadth <= space.width && subPlane.length <= space.height) {
+                            placeRectangle(mainPlane, space, i, subPlane.breadth, subPlane.length, subPlane);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    
+                    if (placed) break;
+                }
+                
+                // If not placed in any existing main plane, create a new one
+                if (!placed) {
+                    const newMainPlane = {
+                        width: mainLength,
+                        height: mainBreadth,
+                        usedRectangles: [],
+                        remainingSpaces: [{x: 0, y: 0, width: mainLength, height: mainBreadth}],
+                        unusedSpaces: []
+                    };
+                    
+                    // Try original orientation first
+                    if (subPlane.length <= mainLength && subPlane.breadth <= mainBreadth) {
+                        placeRectangle(newMainPlane, newMainPlane.remainingSpaces[0], 0, subPlane.length, subPlane.breadth, subPlane);
+                        placed = true;
+                    } 
+                    // Try rotated if allowed
+                    else if (allowRotation && subPlane.breadth <= mainLength && subPlane.length <= mainBreadth) {
+                        placeRectangle(newMainPlane, newMainPlane.remainingSpaces[0], 0, subPlane.breadth, subPlane.length, subPlane);
+                        placed = true;
+                    }
+                    
+                    if (placed) {
+                        mainPlanes.push(newMainPlane);
+                    } else {
+                        console.warn(`Sub-plane ${subPlane.length}×${subPlane.breadth} is too large for the main plane`);
+                    }
+                }
+            }
+            
+            // After packing all sub-planes, collect all unused spaces
+            mainPlanes.forEach(mainPlane => {
+                mainPlane.unusedSpaces = [...mainPlane.remainingSpaces];
+            });
+            
+            return mainPlanes;
+        }
+        
+        // Place a rectangle in a space and update remaining spaces
+        function placeRectangle(mainPlane, space, spaceIndex, rectWidth, rectHeight, subPlane) {
+            // Place the rectangle
+            const rect = {
+                x: space.x,
+                y: space.y,
+                width: rectWidth,
+                height: rectHeight,
+                subPlane: subPlane
+            };
+            mainPlane.usedRectangles.push(rect);
+            
+            // Remove the used space
+            mainPlane.remainingSpaces.splice(spaceIndex, 1);
+            
+            // Calculate remaining spaces (maximal rectangles algorithm)
+            if (space.width > rectWidth) {
+                // Right remaining space
+                mainPlane.remainingSpaces.push({
+                    x: space.x + rectWidth,
+                    y: space.y,
+                    width: space.width - rectWidth,
+                    height: rectHeight
+                });
+            }
+            
+            if (space.height > rectHeight) {
+                // Bottom remaining space
+                mainPlane.remainingSpaces.push({
+                    x: space.x,
+                    y: space.y + rectHeight,
+                    width: space.width,
+                    height: space.height - rectHeight
+                });
+            }
+            
+            // Sort remaining spaces by area (largest first)
+            mainPlane.remainingSpaces.sort((a, b) => (b.width * b.height) - (a.width * a.height));
+        }
+        
+        // Visualize the packing
+        function visualizePacking(mainPlanes, mainLengthMM, mainBreadthMM) {
+            visualization.innerHTML = '';
+            
+            // Determine the scale factor to fit visualization in the container
+            const containerWidth = visualization.clientWidth - 40; // padding
+            const scale = Math.min(
+                containerWidth / mainLengthMM,
+                400 / mainBreadthMM
+            );
+            
+            // Create visualization for each main plane
+            mainPlanes.forEach((mainPlane, planeIndex) => {
+                const planeDiv = document.createElement('div');
+                planeDiv.className = 'main-plane';
+                planeDiv.style.width = `${mainLengthMM * scale}px`;
+                planeDiv.style.height = `${mainBreadthMM * scale}px`;
+                planeDiv.style.marginBottom = '30px';
+                planeDiv.id = `main-plane-${planeIndex}`;
+                
+                const title = document.createElement('h3');
+                title.textContent = `Main Plane ${planeIndex + 1}`;
+                visualization.appendChild(title);
+                visualization.appendChild(planeDiv);
+                
+                // Add all placed sub-planes
+                mainPlane.usedRectangles.forEach(rect => {
+                    const subPlaneDiv = document.createElement('div');
+                    subPlaneDiv.className = 'subplane';
+                    subPlaneDiv.style.left = `${rect.x * scale}px`;
+                    subPlaneDiv.style.top = `${rect.y * scale}px`;
+                    subPlaneDiv.style.width = `${rect.width * scale}px`;
+                    subPlaneDiv.style.height = `${rect.height * scale}px`;
+                    
+                    // Random color for each sub-plane
+                    const hue = (rect.subPlane.id % 360);
+                    subPlaneDiv.style.backgroundColor = `hsl(${hue}, 80%, 60%)`;
+                    
+                    // Display dimensions (convert back to original units)
+                    const displayLength = rect.subPlane.displayLength;
+                    const displayBreadth = rect.subPlane.displayBreadth;
+                    const unit = rect.subPlane.displayUnit;
+                    
+                    // Show dimensions if there's enough space
+                    if (rect.width * scale > 40 && rect.height * scale > 20) {
+                        subPlaneDiv.textContent = `${displayLength}×${displayBreadth} ${unit}`;
+                    }
+                    
+                    planeDiv.appendChild(subPlaneDiv);
+                });
+                
+                // Add all unused spaces
+                mainPlane.unusedSpaces.forEach(space => {
+                    if (space.width > 0 && space.height > 0) {
+                        const unusedDiv = document.createElement('div');
+                        unusedDiv.className = 'unused-space';
+                        unusedDiv.style.left = `${space.x * scale}px`;
+                        unusedDiv.style.top = `${space.y * scale}px`;
+                        unusedDiv.style.width = `${space.width * scale}px`;
+                        unusedDiv.style.height = `${space.height * scale}px`;
+                        
+                        // Convert back to original units for display
+                        const mainUnit = document.getElementById('main-length-unit').value;
+                        const displayWidth = (space.width / units[mainUnit]).toFixed(1);
+                        const displayHeight = (space.height / units[mainUnit]).toFixed(1);
+                        
+                        // Show dimensions if there's enough space
+                        if (space.width * scale > 30 && space.height * scale > 15) {
+                            unusedDiv.textContent = `${displayWidth}×${displayHeight} ${mainUnit}`;
+                        }
+                        
+                        planeDiv.appendChild(unusedDiv);
+                    }
+                });
+            });
+        }
+        
+        // Show statistics about the packing
+        function showStats(mainPlanes, mainLength, mainBreadth, mainUnit) {
+            const totalMainArea = mainLength * mainBreadth;
+            let totalUsedArea = 0;
+            let totalSubArea = 0;
+            let totalUnusedArea = 0;
+            
+            subPlanes.forEach(plane => {
+                // Convert sub-plane area to main plane units for consistent comparison
+                const subArea = (plane.length / units[mainUnit]) * (plane.breadth / units[mainUnit]);
+                totalSubArea += subArea;
+            });
+            
+            mainPlanes.forEach(plane => {
+                let planeUsedArea = 0;
+                plane.usedRectangles.forEach(rect => {
+                    planeUsedArea += (rect.width / units[mainUnit]) * (rect.height / units[mainUnit]);
+                });
+                totalUsedArea += planeUsedArea;
+                
+                let planeUnusedArea = 0;
+                plane.unusedSpaces.forEach(space => {
+                    planeUnusedArea += (space.width / units[mainUnit]) * (space.height / units[mainUnit]);
+                });
+                totalUnusedArea += planeUnusedArea;
+            });
+            
+            const efficiency = (totalUsedArea / (mainPlanes.length * totalMainArea)) * 100;
+            
+            statsDiv.innerHTML = `
+                <h3>Packing Statistics</h3>
+                <p><strong>Main Planes Used:</strong> ${mainPlanes.length}</p>
+                <p><strong>Total Sub-Plane Area:</strong> ${totalSubArea.toFixed(2)} ${mainUnit}²</p>
+                <p><strong>Total Main Plane Area:</strong> ${(mainPlanes.length * totalMainArea).toFixed(2)} ${mainUnit}²</p>
+                <p><strong>Space Utilization:</strong> ${efficiency.toFixed(1)}%</p>
+                <p><strong>Total Unused Area:</strong> ${totalUnusedArea.toFixed(2)} ${mainUnit}²</p>
+                <p><strong>Unused Area Percentage:</strong> ${(totalUnusedArea / (mainPlanes.length * totalMainArea) * 100).toFixed(1)}%</p>
+            `;
+        }
+        
+        // Export visualization to PDF
+        function exportToPDF() {
+            if (visualization.innerHTML.trim() === '') {
+                alert('Please calculate packing first');
+                return;
+            }
+            
+            // Create a new PDF
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm'
+            });
+            
+            // Add title and date
+            doc.setFontSize(16);
+            doc.text('2D Plane Packing Visualization', 105, 10, { align: 'center' });
+            doc.setFontSize(10);
+            doc.text(`Generated on ${new Date().toLocaleString()}`, 105, 15, { align: 'center' });
+            
+            // Capture each main plane visualization
+            const promises = [];
+            const mainPlaneElements = document.querySelectorAll('.main-plane');
+            
+            mainPlaneElements.forEach((plane, index) => {
+                promises.push(
+                    html2canvas(plane).then(canvas => {
+                        const imgData = canvas.toDataURL('image/png');
+                        return { imgData, index };
+                    })
+                );
+            });
+            
+            // When all images are captured, add them to PDF
+            Promise.all(promises).then(results => {
+                results.forEach((result, i) => {
+                    if (i > 0) doc.addPage();
+                    
+                    // Add title for this plane
+                    doc.setFontSize(12);
+                    doc.text(`Main Plane ${i + 1}`, 20, 20);
+                    
+                    // Add the image
+                    const imgProps = doc.getImageProperties(result.imgData);
+                    const pdfWidth = doc.internal.pageSize.getWidth() - 40;
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    doc.addImage(result.imgData, 'PNG', 20, 25, pdfWidth, pdfHeight);
+                });
+                
+                // Add statistics page
+                doc.addPage();
+                doc.setFontSize(14);
+                doc.text('Packing Statistics', 20, 20);
+                doc.setFontSize(10);
+                
+                const statsText = statsDiv.innerText.split('\n');
+                statsText.forEach((line, i) => {
+                    if (line.trim()) doc.text(line.trim(), 20, 30 + (i * 5));
+                });
+                
+                // Save the PDF
+                doc.save('packing-visualization.pdf');
+            });
+        }
+        
+        // Save current state to local storage
+        function saveToLocalStorage() {
+            const state = {
+                mainLength: document.getElementById('main-length').value,
+                mainBreadth: document.getElementById('main-breadth').value,
+                mainLengthUnit: document.getElementById('main-length-unit').value,
+                mainBreadthUnit: document.getElementById('main-breadth-unit').value,
+                allowRotation: document.getElementById('allow-rotation').checked,
+                subPlanes: subPlanes
+            };
+            
+            localStorage.setItem('planePackingApp', JSON.stringify(state));
+            alert('Data saved successfully!');
+        }
+        
+        // Load state from local storage
+        function loadFromLocalStorage() {
+            const savedState = localStorage.getItem('planePackingApp');
+            if (!savedState) {
+                alert('No saved data found');
+                return;
+            }
+            
+            try {
+                const state = JSON.parse(savedState);
+                
+                document.getElementById('main-length').value = state.mainLength;
+                document.getElementById('main-breadth').value = state.mainBreadth;
+                document.getElementById('main-length-unit').value = state.mainLengthUnit;
+                document.getElementById('main-breadth-unit').value = state.mainBreadthUnit;
+                document.getElementById('allow-rotation').checked = state.allowRotation;
+                
+                subPlanes = state.subPlanes || [];
+                renderSubPlaneList();
+                
+                alert('Data loaded successfully!');
+            } catch (e) {
+                console.error('Error loading saved data:', e);
+                alert('Error loading saved data');
+            }
+        }
+        
+        // Clear all data
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all data?')) {
+                subPlanes = [];
+                document.getElementById('main-length').value = '';
+                document.getElementById('main-breadth').value = '';
+                document.getElementById('sub-length').value = '';
+                document.getElementById('sub-breadth').value = '';
+                document.getElementById('allow-rotation').checked = false;
+                visualization.innerHTML = '';
+                statsDiv.innerHTML = '';
+                renderSubPlaneList();
+            }
+        }
+        
+        // Initialize the app when loaded
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
